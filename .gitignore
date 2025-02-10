@@ -1,0 +1,8 @@
+node_modules/
+inputs/
+outputs/
+build/
+*leo.lock
+.env
+.DS_Store
+.vscode
