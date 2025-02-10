@@ -32,17 +32,20 @@ program pool_together_test_1.aleo {
 
     const DEFAULT_KEY: u8 = 0u8;
 
+    mapping admin: u8 => address;
     mapping pool_counter: u8 => u64;
     mapping pools: u64 => Pool;
     mapping balances: field => u64;
     mapping player_slots: field => address;
     mapping pool_winner: u64 => address;
 
-    async transition initialize_pool_public() -> Future {
-        return finalize_initialize_pool_public();
+    async transition initialize_pool_public(public init_admin: address) -> Future {
+        return finalize_initialize_pool_public(init_admin);
     }
 
-    async function finalize_initialize_pool_public() {
+    async function finalize_initialize_pool_public(public init_admin: address) {
+        admin.set(DEFAULT_KEY, init_admin);
+
         pool_counter.set(DEFAULT_KEY, 1u64);
         pools.set(DEFAULT_KEY as u64, Pool {
             pool_id: 1u64,
@@ -123,14 +126,17 @@ program pool_together_test_1.aleo {
         // call withdraw paleo
         let f0: Future = pondo_protocol.aleo/withdraw_public(paleo_burn_amount);
 
-        return finalize_select_winner_public(f0, paleo_burn_amount);
+        return finalize_select_winner_public(f0, self.caller, paleo_burn_amount);
     }
 
     async function finalize_select_winner_public(
-        public f0: Future, 
+        public f0: Future,
+        public caller: address,
         public paleo_burn_amount: u64
     ) {
         f0.await();
+
+        assert(caller == admin.get(DEFAULT_KEY));
 
         let random_number: u64 = ChaCha::rand_u64();
         let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
@@ -202,5 +208,17 @@ program pool_together_test_1.aleo {
         }
 
         balances.set(player_pool_hash, 0u64);
-    } 
+    }
+
+    async transition update_admin_public(public new_admin: address) -> Future {
+        return finalize_update_admin_public(self.caller, new_admin);
+    }
+
+    async function finalize_update_admin_public(
+        public caller: address, 
+        public new_admin: address
+    ) {
+        assert(caller == admin.get(DEFAULT_KEY));
+        admin.set(DEFAULT_KEY, new_admin);
+    }
 }
