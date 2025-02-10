@@ -11,6 +11,7 @@ program pool_together_test_1.aleo {
         total_paleo: u64,
         total_players: u64,
         reward: u64,
+        redeem_block: u32,
         closed: bool,
     }
 
@@ -49,6 +50,7 @@ program pool_together_test_1.aleo {
             total_paleo: 0u64,
             total_players: 0u64,
             reward: 0u64,
+            redeem_block: 0u32,
             closed: false
         });
     }
@@ -81,6 +83,7 @@ program pool_together_test_1.aleo {
             total_paleo: 0u64,
             total_players: 0u64,
             reward: 0u64,
+            redeem_block: 0u32,
             closed: false
         });
 
@@ -108,6 +111,7 @@ program pool_together_test_1.aleo {
             total_paleo: current_pool.total_paleo + expected_paleo_mint as u64,
             total_players: current_pool.total_players + 1u64,
             reward: 0u64,
+            redeem_block: 0u32,
             closed: false
         };
         pools.set(pool_id, new_pool);
@@ -152,6 +156,7 @@ program pool_together_test_1.aleo {
             total_paleo: current_pool.total_paleo,
             total_players: current_pool.total_players,
             reward: reward,
+            redeem_block: withdrawal.claim_block,
             closed: true
         };
         pools.set(current_pool.pool_id, new_pool);
@@ -179,6 +184,7 @@ program pool_together_test_1.aleo {
 
         let current_pool: Pool = pools.get(pool_id);
         assert(current_pool.closed);
+        assert(block.height >= current_pool.redeem_block);
         
         let player_pool: PlayerPool = PlayerPool {
             player: player,
