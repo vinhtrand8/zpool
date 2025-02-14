@@ -10,9 +10,11 @@
   | ---------- | ------- | ------------- |
   | init_admin | address | Initial admin |
 
-## Uodate admin
+## Update admin
 
 - Function: update_admin_public
+
+- Note: Only admin can call this function
 
 - Arguments
 
@@ -31,13 +33,23 @@
   | credits_deposit     | u64  | Aleo amount    |
   | expected_paleo_mint | u64  | Expected pAleo |
 
+## Close pool
+
+- Function: close_pool_public
+
+- Note: Only admin can call this function
+
 ## Select winner
 
 - Function: select_winner_public
+
+- Note: Only admin can call this function
+
 - Arguments
 
   | name              | type | description              |
   | ----------------- | ---- | ------------------------ |
+  | pool_id           | u64  | Pool Id                  |
   | paleo_burn_amount | u64  | total pAleo of this pool |
 
 ## Redeem

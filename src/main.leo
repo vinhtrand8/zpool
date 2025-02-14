@@ -2,7 +2,7 @@ import credits.aleo;
 import pondo_protocol.aleo;
 import token_registry.aleo;
 
-program pool_together_test_1.aleo {
+program zpool_test_2.aleo {
     const PALEO_TOKEN_ID: field = 1751493913335802797273486270793650302076377624243810059080883537084141842600field;
 
     struct Pool {
@@ -46,16 +46,18 @@ program pool_together_test_1.aleo {
     async function finalize_initialize_pool_public(public init_admin: address) {
         admin.set(DEFAULT_KEY, init_admin);
 
-        pool_counter.set(DEFAULT_KEY, 1u64);
-        pools.set(DEFAULT_KEY as u64, Pool {
-            pool_id: 1u64,
+        let init_pool: Pool = Pool {
+            pool_id: 0u64,
             total_credits: 0u64,
             total_paleo: 0u64,
             total_players: 0u64,
             reward: 0u64,
             redeem_block: 0u32,
             closed: false
-        });
+        };
+        pools.set(DEFAULT_KEY as u64, init_pool);
+
+        pool_counter.set(DEFAULT_KEY, 1u64);
     }
 
     async transition join_pool_public(
@@ -80,15 +82,7 @@ program pool_together_test_1.aleo {
         f1.await();
 
         let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
-        let current_pool: Pool = pools.get_or_use(pool_id, Pool {
-            pool_id: 0u64,
-            total_credits: 0u64,
-            total_paleo: 0u64,
-            total_players: 0u64,
-            reward: 0u64,
-            redeem_block: 0u32,
-            closed: false
-        });
+        let current_pool: Pool = pools.get(pool_id);
 
         assert(!current_pool.closed);
 
@@ -120,17 +114,58 @@ program pool_together_test_1.aleo {
         pools.set(pool_id, new_pool);
     }
 
+    async transition close_pool_public() -> Future {
+        return finalize_close_pool_public(self.caller);
+    }
+
+     async function finalize_close_pool_public(
+        public caller: address,
+    ) {
+        assert(caller == admin.get(DEFAULT_KEY));
+        let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
+        let current_pool: Pool = pools.get(pool_id);
+
+        assert(!current_pool.closed);
+
+        let closed_pool: Pool = Pool {
+            pool_id: current_pool.pool_id,
+            total_credits: current_pool.total_credits,
+            total_paleo: current_pool.total_paleo,
+            total_players: current_pool.total_players,
+            reward: current_pool.reward,
+            redeem_block: current_pool.redeem_block,
+            closed: true
+        };
+        pools.set(current_pool.pool_id, closed_pool);
+
+        let new_pool: Pool = Pool {
+            pool_id: current_pool.pool_id + 1u64,
+            total_credits: 0u64,
+            total_paleo: 0u64,
+            total_players: 0u64,
+            reward: 0u64,
+            redeem_block: 0u32,
+            closed: false
+        };
+        pools.set(new_pool.pool_id, new_pool);
+
+        let current_pool_counter: u64 = pool_counter.get(DEFAULT_KEY);
+        pool_counter.set(DEFAULT_KEY, current_pool_counter + 1u64);
+    }
+
     async transition select_winner_public(
+        public pool_id: u64,
         public paleo_burn_amount: u64
     ) -> Future {
         // call withdraw paleo
         let f0: Future = pondo_protocol.aleo/withdraw_public(paleo_burn_amount);
 
-        return finalize_select_winner_public(f0, self.caller, paleo_burn_amount);
+        return finalize_select_winner_public(f0, pool_id, self.caller, paleo_burn_amount);
     }
 
     async function finalize_select_winner_public(
         public f0: Future,
+        public pool_id: u64,
         public caller: address,
         public paleo_burn_amount: u64
     ) {
@@ -139,10 +174,9 @@ program pool_together_test_1.aleo {
         assert(caller == admin.get(DEFAULT_KEY));
 
         let random_number: u64 = ChaCha::rand_u64();
-        let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
         let current_pool: Pool = pools.get(pool_id);
 
-        assert(!current_pool.closed);
+        assert(current_pool.closed && current_pool.redeem_block == 0u32);
         assert(current_pool.total_paleo == paleo_burn_amount);
 
         let winner_slot: PlayerSlot = PlayerSlot {
@@ -154,7 +188,9 @@ program pool_together_test_1.aleo {
         pool_winner.set(pool_id, winner);
 
         let withdrawal: withdrawal_state = pondo_protocol.aleo/withdrawals.get(self.address);
-        let reward: u64 = current_pool.total_credits - withdrawal.microcredits;
+
+        assert(withdrawal.microcredits > current_pool.total_credits);
+        let reward: u64 = withdrawal.microcredits - current_pool.total_credits;
 
         let new_pool: Pool = Pool {
             pool_id: current_pool.pool_id,
@@ -190,7 +226,7 @@ program pool_together_test_1.aleo {
 
         let current_pool: Pool = pools.get(pool_id);
         assert(current_pool.closed);
-        assert(block.height >= current_pool.redeem_block);
+        assert(current_pool.redeem_block != 0u32 && block.height >= current_pool.redeem_block);
         
         let player_pool: PlayerPool = PlayerPool {
             player: player,
