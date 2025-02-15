@@ -44,6 +44,9 @@ program zpool_test_2.aleo {
     }
 
     async function finalize_initialize_pool_public(public init_admin: address) {
+        let total_pools: u64 = pool_counter.get_or_use(DEFAULT_KEY, 0u64);
+        assert(total_pools == 0u64);
+
         admin.set(DEFAULT_KEY, init_admin);
 
         let init_pool: Pool = Pool {
@@ -55,7 +58,7 @@ program zpool_test_2.aleo {
             redeem_block: 0u32,
             closed: false
         };
-        pools.set(DEFAULT_KEY as u64, init_pool);
+        pools.set(init_pool.pool_id, init_pool);
 
         pool_counter.set(DEFAULT_KEY, 1u64);
     }
