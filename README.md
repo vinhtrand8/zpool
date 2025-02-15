@@ -1,64 +1,87 @@
 # ZPool
 
-## Initialize pool contract
+## How It Works
 
-- Function: initialize_pool_public
+1. **User Deposits:** Users deposit token into the current active pool.
+2. **Pool Rotation:** The admin closes the current pool and opens a new one.
+3. **Profit Generation & Winner Selection:**
+   - When a pool generates a profit, the admin selects a winner from the closed pool.
+   - The admin cannot immediately close a pool and select a winner because user deposits are transferred to **Pondo**, which charges a fee.
+   - The admin must wait until the pool accumulates profits to ensure the winner receives a payout.
+4. **Withdrawal Unlocking:**
+   - **Pondo** unlocks withdrawals at the start of a new Aleo epoch (which can take 2-5 days).
+   - After that, anyone can call `Pondo` to claim the withdrawal for the `ZPool` contract, though it's recommended for the admin to handle this.
+5. **User Redemption:** Once the withdrawal is claimed, users can redeem their deposited funds.
 
-- Arguments
+### Recommendations
 
-  | name       | type    | description   |
-  | ---------- | ------- | ------------- |
-  | init_admin | address | Initial admin |
+- The waiting period between closing a pool and selecting a winner should be **5-7 days** to maximize profits.
+- The admin should call `claim_withdrawal_public` on the `Pondo` contract before step 5 to facilitate withdrawals.
 
-## Update admin
+---
 
-- Function: update_admin_public
+## Contract Functions
 
-- Note: Only admin can call this function
+### Initialize Pool Contract
 
-- Arguments
+**Function:** `initialize_pool_public`
 
-  | name      | type    | description |
-  | --------- | ------- | ----------- |
-  | new_admin | address | New admin   |
+| Argument     | Type      | Description                   |
+| ------------ | --------- | ----------------------------- |
+| `init_admin` | `address` | Initial admin of the contract |
 
-## Join pool
+---
 
-- Function: join_pool_public
+### Update Admin
 
-- Arguments
+**Function:** `update_admin_public`
 
-  | name                | type | description    |
-  | ------------------- | ---- | -------------- |
-  | credits_deposit     | u64  | Aleo amount    |
-  | expected_paleo_mint | u64  | Expected pAleo |
+- **Access Control:** Only the admin can call this function.
 
-## Close pool
+| Argument    | Type      | Description              |
+| ----------- | --------- | ------------------------ |
+| `new_admin` | `address` | Address of the new admin |
 
-- Function: close_pool_public
+---
 
-- Note: Only admin can call this function
+### Join Pool
 
-## Select winner
+**Function:** `join_pool_public`
 
-- Function: select_winner_public
+| Argument              | Type  | Description                                                                                    |
+| --------------------- | ----- | ---------------------------------------------------------------------------------------------- |
+| `credits_deposit`     | `u64` | Amount of Aleo to deposit                                                                      |
+| `expected_paleo_mint` | `u64` | Expected pAleo (since the contract cannot estimate this, the UI must provide a roughly number) |
 
-- Note: Only admin can call this function
+---
 
-- Arguments
+### Close Pool
 
-  | name              | type | description              |
-  | ----------------- | ---- | ------------------------ |
-  | pool_id           | u64  | Pool Id                  |
-  | paleo_burn_amount | u64  | total pAleo of this pool |
+**Function:** `close_pool_public`
 
-## Redeem
+- **Access Control:** Only the admin can call this function.
 
-- Function: redeem_public
-- Arguments
+---
 
-  | name           | type    | description                    |
-  | -------------- | ------- | ------------------------------ |
-  | pool_id        | u64     | Pool Id                        |
-  | player         | address | Player                         |
-  | credits_redeem | u64     | Deposited credits to this pool |
+### Select Winner
+
+**Function:** `select_winner_public`
+
+- **Access Control:** Only the admin can call this function.
+
+| Argument            | Type  | Description                                            |
+| ------------------- | ----- | ------------------------------------------------------ |
+| `pool_id`           | `u64` | ID of the pool                                         |
+| `paleo_burn_amount` | `u64` | Total pAleo in the pool (must match the stored amount) |
+
+---
+
+### Redeem Deposits
+
+**Function:** `redeem_public`
+
+| Argument         | Type      | Description                                                                            |
+| ---------------- | --------- | -------------------------------------------------------------------------------------- |
+| `pool_id`        | `u64`     | ID of the pool                                                                         |
+| `player`         | `address` | Address of the player redeeming funds                                                  |
+| `credits_redeem` | `u64`     | Deposited credits, and rewards if the caller is the winner (must match stored balance) |
