@@ -2,7 +2,7 @@ import credits.aleo;
 import pondo_protocol.aleo;
 import token_registry.aleo;
 
-program zpool_test_2.aleo {
+program zpool_test_1.aleo {
     const PALEO_TOKEN_ID: field = 1751493913335802797273486270793650302076377624243810059080883537084141842600field;
 
     struct Pool {
@@ -50,7 +50,7 @@ program zpool_test_2.aleo {
         admin.set(DEFAULT_KEY, init_admin);
 
         let init_pool: Pool = Pool {
-            pool_id: 0u64,
+            pool_id: 1u64,
             total_credits: 0u64,
             total_paleo: 0u64,
             total_players: 0u64,
