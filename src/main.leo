@@ -31,26 +31,47 @@ program zpool_test_1.aleo {
     }
 
     const DEFAULT_KEY: u8 = 0u8;
-
+    
+    mapping initialized: u8 => bool;
     mapping admin: u8 => address;
-    mapping pool_counter: u8 => u64;
+    
+    mapping opened_pools: u64 => bool;
     mapping pools: u64 => Pool;
     mapping balances: field => u64;
     mapping player_slots: field => address;
     mapping pool_winner: u64 => address;
 
-    async transition initialize_pool_public(public init_admin: address) -> Future {
-        return finalize_initialize_pool_public(init_admin);
+    async transition initialize(public init_admin: address) -> Future {
+        return finalize_initialize(init_admin);
     }
 
-    async function finalize_initialize_pool_public(public init_admin: address) {
-        let total_pools: u64 = pool_counter.get_or_use(DEFAULT_KEY, 0u64);
-        assert(total_pools == 0u64);
+    async function finalize_initialize(public init_admin: address) {
+        let is_initialized: bool = initialized.get_or_use(DEFAULT_KEY, false);
+        assert(!is_initialized);
 
         admin.set(DEFAULT_KEY, init_admin);
+        
+        initialized.set(DEFAULT_KEY, true);
+    }
 
-        let init_pool: Pool = Pool {
-            pool_id: 1u64,
+    async transition open_pool_public(
+        public pool_id: u64
+    ) -> Future {
+        return finalize_open_pool_public(pool_id, self.caller);
+    }
+
+    async function finalize_open_pool_public(
+        public pool_id: u64,
+        public caller: address
+    ) {
+        assert(caller == admin.get(DEFAULT_KEY));
+
+        let opened: bool = opened_pools.get_or_use(pool_id, false);
+        assert(!opened);
+        opened_pools.set(pool_id, true);
+
+        let new_pool: Pool = Pool {
+            pool_id: pool_id,
             total_credits: 0u64,
             total_paleo: 0u64,
             total_players: 0u64,
@@ -58,12 +79,11 @@ program zpool_test_1.aleo {
             redeem_block: 0u32,
             closed: false
         };
-        pools.set(init_pool.pool_id, init_pool);
-
-        pool_counter.set(DEFAULT_KEY, 1u64);
+        pools.set(pool_id, new_pool);
     }
 
     async transition join_pool_public(
+        public pool_id: u64,
         public credits_deposit: u64,
         public expected_paleo_mint: u64
     ) -> Future {
@@ -71,12 +91,13 @@ program zpool_test_1.aleo {
         let f0: Future = pondo_protocol.aleo/deposit_public_as_signer(credits_deposit, expected_paleo_mint, self.address);
         let f1: Future = token_registry.aleo/transfer_public_as_signer(PALEO_TOKEN_ID, self.address, expected_paleo_mint as u128);
 
-        return finalize_join_pool_public(f0, f1, self.signer, credits_deposit, expected_paleo_mint);
+        return finalize_join_pool_public(f0, f1, pool_id, self.signer, credits_deposit, expected_paleo_mint);
     }
 
     async function finalize_join_pool_public(
         public f0: Future,
         public f1: Future,
+        public pool_id: u64,
         public player: address,
         public credits_deposit: u64,
         public expected_paleo_mint: u64
@@ -84,7 +105,6 @@ program zpool_test_1.aleo {
         f0.await();
         f1.await();
 
-        let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
         let current_pool: Pool = pools.get(pool_id);
 
         assert(!current_pool.closed);
@@ -117,17 +137,22 @@ program zpool_test_1.aleo {
         pools.set(pool_id, new_pool);
     }
 
-    async transition close_pool_public() -> Future {
-        return finalize_close_pool_public(self.caller);
+    async transition close_pool_public(
+        public pool_id: u64,
+    ) -> Future {
+        return finalize_close_pool_public(pool_id, self.caller);
     }
 
      async function finalize_close_pool_public(
+        public pool_id: u64,
         public caller: address,
     ) {
         assert(caller == admin.get(DEFAULT_KEY));
-        let pool_id: u64 = pool_counter.get(DEFAULT_KEY);
-        let current_pool: Pool = pools.get(pool_id);
 
+        let opened: bool = opened_pools.get(pool_id);
+        assert(opened);
+
+        let current_pool: Pool = pools.get(pool_id);
         assert(!current_pool.closed);
 
         let closed_pool: Pool = Pool {
@@ -151,9 +176,6 @@ program zpool_test_1.aleo {
             closed: false
         };
         pools.set(new_pool.pool_id, new_pool);
-
-        let current_pool_counter: u64 = pool_counter.get(DEFAULT_KEY);
-        pool_counter.set(DEFAULT_KEY, current_pool_counter + 1u64);
     }
 
     async transition select_winner_public(
@@ -205,7 +227,6 @@ program zpool_test_1.aleo {
             closed: true
         };
         pools.set(current_pool.pool_id, new_pool);
-        pool_counter.set(DEFAULT_KEY, pool_id + 1u64);
     }
 
     async transition redeem_public(
