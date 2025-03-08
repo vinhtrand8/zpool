@@ -130,18 +130,62 @@ program zpool_test_1.aleo {
         let new_player_balance: u64 = player_balance + credits_deposit;
         balances.set(player_pool_hash, new_player_balance);
 
-        let player_slot: PlayerSlot = PlayerSlot {
-            pool_id: pool_id,
-            player_id: current_pool.total_players
-        };
-        let player_slot_hash: field = BHP256::hash_to_field(player_slot);
-        player_slots.set(player_slot_hash, player);
+        let num_of_slots: u64 = (credits_deposit / 100_000_000u64) + 1u64;
+        let start_player_id: u64 = current_pool.total_players;
+        if num_of_slots == 1u64 {
+            for i: u64 in 0u64..1u64 {
+                let player_slot: PlayerSlot = PlayerSlot {
+                    pool_id: pool_id,
+                    player_id: start_player_id + i
+                };
+                let player_slot_hash: field = BHP256::hash_to_field(player_slot);
+                player_slots.set(player_slot_hash, player);
+            }
+        } else if num_of_slots == 2u64 {
+            for i: u64 in 0u64..2u64 {
+                let player_slot: PlayerSlot = PlayerSlot {
+                    pool_id: pool_id,
+                    player_id: start_player_id + i
+                };
+                let player_slot_hash: field = BHP256::hash_to_field(player_slot);
+                player_slots.set(player_slot_hash, player);
+            }
+        } else if num_of_slots == 3u64 {
+            for i: u64 in 0u64..3u64 {
+                let player_slot: PlayerSlot = PlayerSlot {
+                    pool_id: pool_id,
+                    player_id: start_player_id + i
+                };
+                let player_slot_hash: field = BHP256::hash_to_field(player_slot);
+                player_slots.set(player_slot_hash, player);
+            }
+        }  else if num_of_slots == 4u64 {
+            for i: u64 in 0u64..4u64 {
+                let player_slot: PlayerSlot = PlayerSlot {
+                    pool_id: pool_id,
+                    player_id: start_player_id + i
+                };
+                let player_slot_hash: field = BHP256::hash_to_field(player_slot);
+                player_slots.set(player_slot_hash, player);
+            }
+        } else if num_of_slots == 5u64 {
+            for i: u64 in 0u64..5u64 {
+                let player_slot: PlayerSlot = PlayerSlot {
+                    pool_id: pool_id,
+                    player_id: start_player_id + i
+                };
+                let player_slot_hash: field = BHP256::hash_to_field(player_slot);
+                player_slots.set(player_slot_hash, player);
+            }
+        } else {
+            assert(false);
+        }
 
         let new_pool: Pool = Pool {
             pool_id: pool_id,
             total_deposit: current_pool.total_deposit + credits_deposit,
             total_paleo: current_pool.total_paleo + expected_paleo_mint,
-            total_players: current_pool.total_players + 1u64,
+            total_players: current_pool.total_players + num_of_slots,
             reward: 0u64,
             deposit_deadline_timestamp: current_pool.deposit_deadline_timestamp,
             withdrawal_start_timestamp: current_pool.withdrawal_start_timestamp,
